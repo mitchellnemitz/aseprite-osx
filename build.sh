@@ -2,8 +2,13 @@
 
 # Installs chosen Aseprite version to /Applications/Aseprite.app
 # @see https://www.aseprite.org/trial/
+# @see https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c
 
-ASEPRITE_VERSION="v1.2.17"
+ASEPRITE_VERSION=$(
+  curl --silent "https://api.github.com/repos/aseprite/aseprite/releases/latest" |
+    grep '"tag_name":' |
+    sed -E 's/.*"([^"]+)".*/\1/'
+)
 
 # Update SKIA_BRANCH to current required version
 # @see https://github.com/aseprite/aseprite/blob/master/INSTALL.md
@@ -21,12 +26,12 @@ DEPS_DIR="$ROOT_DIR/deps"
 brew install cmake ninja
 
 if [[ -d "$ROOT_DIR/aseprite" ]]; then
-  cd "$ROOT_DIR/aseprite"
+  cd "$ROOT_DIR/aseprite" || exit 1
   git pull
   git submodule update --init --recursive
 else
   mkdir -p "$ROOT_DIR"
-  cd "$ROOT_DIR"
+  cd "$ROOT_DIR" || exit 1
   git clone --recursive https://github.com/aseprite/aseprite.git
 fi
 
@@ -36,19 +41,19 @@ fi
 mkdir -p "$DEPS_DIR"
 
 if [[ -d "$DEPS_DIR/skia" ]]; then
-  cd "$DEPS_DIR/skia"
+  cd "$DEPS_DIR/skia" || exit 1
   git checkout "$SKIA_BRANCH"
   git pull
 else
-  cd "$DEPS_DIR"
+  cd "$DEPS_DIR" || exit 1
   git clone -b "$SKIA_BRANCH" https://github.com/aseprite/skia.git
 fi
 
 if [[ -d "$DEPS_DIR/depot_tools" ]]; then
-  cd "$DEPS_DIR/depot_tools"
+  cd "$DEPS_DIR/depot_tools" || exit 1
   git pull
 else
-  cd "$DEPS_DIR"
+  cd "$DEPS_DIR" || exit 1
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
 fi
 
@@ -57,7 +62,7 @@ export PATH="$PWD/depot_tools:$PATH"
 # Build Skia
 # @see https://github.com/aseprite/skia#skia-on-macos
 
-cd "$DEPS_DIR/skia"
+cd "$DEPS_DIR/skia" || exit 1
 python tools/git-sync-deps
 gn gen out/Release-x64 --args="is_debug=false is_official_build=true skia_use_system_expat=false skia_use_system_icu=false skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false skia_use_system_libwebp=false skia_use_system_zlib=false skia_use_sfntly=false skia_use_freetype=true skia_use_harfbuzz=true skia_pdf_subset_harfbuzz=true skia_use_system_freetype2=false skia_use_system_harfbuzz=false target_cpu=\"x64\" extra_cflags=[\"-stdlib=libc++\", \"-mmacosx-version-min=10.9\"] extra_cflags_cc=[\"-frtti\"]"
 ninja -C out/Release-x64 skia modules
@@ -66,7 +71,7 @@ ninja -C out/Release-x64 skia modules
 # @see https://github.com/aseprite/aseprite/blob/master/INSTALL.md
 
 mkdir -p "$ROOT_DIR/aseprite/build"
-cd "$ROOT_DIR/aseprite/build"
+cd "$ROOT_DIR/aseprite/build" || exit 1
 
 cmake \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -86,7 +91,7 @@ ninja aseprite
 
 DMG_NAME="Aseprite-${ASEPRITE_VERSION}-trial-macOS.dmg"
 
-cd "$ROOT_DIR"
+cd "$ROOT_DIR" || exit 1
 curl -O "https://www.aseprite.org/downloads/trial/${DMG_NAME}"
 
 hdiutil convert -quiet "$DMG_NAME" -format UDTO -o "$DMG_NAME"
@@ -100,6 +105,8 @@ cp aseprite/build/bin/aseprite Aseprite.app/Contents/MacOS/aseprite
 rm -rf Aseprite.app/Contents/Resources/data
 cp -R aseprite/build/bin/data Aseprite.app/Contents/Resources/data
 
-# Uncomment the next two lines to install Aseprite automatically
-# rm -rf /Applications/Aseprite.app
-# cp -R Aseprite.app /Applications/Aseprite.app
+# Install Aseprite automatically if requested
+if [[ "$1" == "--install" ]]; then
+  rm -rf /Applications/Aseprite.app
+  cp -R Aseprite.app /Applications/Aseprite.app
+fi
