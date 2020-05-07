@@ -105,8 +105,6 @@ cp aseprite/build/bin/aseprite Aseprite.app/Contents/MacOS/aseprite
 rm -rf Aseprite.app/Contents/Resources/data
 cp -R aseprite/build/bin/data Aseprite.app/Contents/Resources/data
 
-# Install Aseprite automatically if requested
-if [[ "$1" == "--install" ]]; then
-  rm -rf /Applications/Aseprite.app
-  cp -R Aseprite.app /Applications/Aseprite.app
-fi
+echo "--------------------------------------"
+echo " If you see no errors above, success! "
+echo "--------------------------------------"

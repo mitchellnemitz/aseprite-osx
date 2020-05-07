@@ -1,4 +1,6 @@
 *
-!.gitignore
+!README.md
 !build.sh
 !clean.sh
+!install.sh
+!.gitignore
